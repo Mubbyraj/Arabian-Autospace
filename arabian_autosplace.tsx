@@ -772,6 +772,14 @@ export default function App() {
 
     useEffect(() => {
       if (!user) return;
+
+      // Firebase is optional for the public demo. Avoid dereferencing a missing Firestore
+      // instance so the admin login screen can still render without Firebase credentials.
+      if (!firebaseConfigured || !db) {
+        setRequests([]);
+        setBookings([]);
+        return;
+      }
       
       const reqRef = collection(db, 'artifacts', appId, 'public', 'data', 'carRequests');
       const unsubReq = onSnapshot(reqRef, snap => {
