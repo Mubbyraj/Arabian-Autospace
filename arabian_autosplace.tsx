@@ -13,11 +13,21 @@ import {
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 // --- FIREBASE INITIALIZATION ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+const firebaseConfig = typeof __firebase_config !== 'undefined'
+  ? JSON.parse(__firebase_config)
+  : {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    };
+const firebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
+const app = firebaseConfigured ? initializeApp(firebaseConfig) : null;
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
+const storage = app ? getStorage(app) : null;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabian-autosplace-app';
 
 // --- MOCK DATA FOR SEEDING ---
@@ -98,6 +108,13 @@ export default function App() {
 
   // Firebase Auth & Data Fetching
   useEffect(() => {
+    if (!firebaseConfigured || !auth) {
+      // Keep the public site usable with the included demo inventory until Firebase is configured.
+      setInventory(seedInventory.map((car, index) => ({ ...car, id: `demo-${index + 1}` })));
+      setUser({ uid: 'demo-user' });
+      return;
+    }
+
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -116,7 +133,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !firebaseConfigured || !db) return;
 
     const inventoryRef = collection(db, 'artifacts', appId, 'public', 'data', 'inventory');
     
